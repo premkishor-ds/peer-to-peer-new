@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Send, Sparkles, Copy, Wand2, Loader2, User, Bot, AlertCircle } from 'lucide-react';
+import { Send, Sparkles, User } from 'lucide-react';
 import { Message } from '../types';
-import { generateIcebreakers, refineMessage } from '../services/geminiService';
 
 interface ChatPanelProps {
   messages: Message[];
@@ -11,8 +10,6 @@ interface ChatPanelProps {
 
 export const ChatPanel: React.FC<ChatPanelProps> = ({ messages, onSendMessage, myId }) => {
   const [inputText, setInputText] = useState('');
-  const [isGenerating, setIsGenerating] = useState(false);
-  const [suggestedTopic, setSuggestedTopic] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
@@ -21,7 +18,7 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({ messages, onSendMessage, m
 
   useEffect(() => {
     scrollToBottom();
-  }, [messages, suggestedTopic]);
+  }, [messages]);
 
   const handleSend = () => {
     if (inputText.trim()) {
@@ -37,48 +34,24 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({ messages, onSendMessage, m
     }
   };
 
-  const handleGenerateIcebreaker = async () => {
-    setIsGenerating(true);
-    setSuggestedTopic(null);
-    try {
-      const topics = await generateIcebreakers();
-      if (topics.length > 0) {
-        setSuggestedTopic(topics[Math.floor(Math.random() * topics.length)]);
-      }
-    } finally {
-      setIsGenerating(false);
-    }
-  };
-
-  const handleRefine = async () => {
-    if (!inputText) return;
-    setIsGenerating(true);
-    try {
-      const refined = await refineMessage(inputText);
-      setInputText(refined);
-    } finally {
-      setIsGenerating(false);
-    }
-  };
-
   return (
     <div className="flex flex-col h-full bg-slate-900 border-l border-slate-700">
       {/* Header */}
       <div className="p-4 border-b border-slate-800 bg-slate-900/50 backdrop-blur">
         <h2 className="text-lg font-semibold text-white flex items-center gap-2">
           <Sparkles className="text-indigo-400" size={18} />
-          Smart Chat
+          Chat
         </h2>
-        <p className="text-xs text-slate-400 mt-1">Powered by Gemini AI</p>
+        <p className="text-xs text-slate-400 mt-1">Peer-to-peer conversation</p>
       </div>
 
       {/* Messages Area */}
       <div className="flex-1 overflow-y-auto p-4 space-y-4 no-scrollbar">
-        {messages.length === 0 && !suggestedTopic && (
+        {messages.length === 0 && (
           <div className="text-center py-10 opacity-50">
             <Sparkles size={48} className="mx-auto mb-4 text-slate-600" />
             <p className="text-slate-400 text-sm">No messages yet.</p>
-            <p className="text-slate-500 text-xs mt-2">Try the Magic Button below!</p>
+            <p className="text-slate-500 text-xs mt-2">Start the conversation!</p>
           </div>
         )}
 
@@ -107,50 +80,7 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({ messages, onSendMessage, m
           </div>
         ))}
 
-        {suggestedTopic && (
-          <div className="bg-indigo-900/30 border border-indigo-500/30 rounded-xl p-3 animate-fade-in">
-            <div className="flex items-start gap-3">
-              <Bot className="text-indigo-400 mt-1 shrink-0" size={16} />
-              <div className="flex-1">
-                <p className="text-xs font-bold text-indigo-300 mb-1">Gemini Suggestion</p>
-                <p className="text-sm text-indigo-100 italic">"{suggestedTopic}"</p>
-              </div>
-              <button 
-                onClick={() => {
-                  onSendMessage(suggestedTopic);
-                  setSuggestedTopic(null);
-                }}
-                className="p-1.5 hover:bg-indigo-500/20 rounded-lg text-indigo-300 transition-colors"
-                title="Send this"
-              >
-                <Send size={14} />
-              </button>
-            </div>
-          </div>
-        )}
         <div ref={messagesEndRef} />
-      </div>
-
-      {/* AI Tools */}
-      <div className="px-4 py-2 flex gap-2 overflow-x-auto no-scrollbar border-t border-slate-800 bg-slate-900/80">
-        <button
-          onClick={handleGenerateIcebreaker}
-          disabled={isGenerating}
-          className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs rounded-full border border-slate-700 transition-all whitespace-nowrap disabled:opacity-50"
-        >
-          {isGenerating ? <Loader2 size={12} className="animate-spin" /> : <Sparkles size={12} className="text-yellow-400" />}
-          Icebreaker
-        </button>
-        {inputText.length > 3 && (
-          <button
-            onClick={handleRefine}
-            disabled={isGenerating}
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs rounded-full border border-slate-700 transition-all whitespace-nowrap disabled:opacity-50"
-          >
-            {isGenerating ? <Loader2 size={12} className="animate-spin" /> : <Wand2 size={12} className="text-purple-400" />}
-            Polish Text
-          </button>
-        )}
       </div>
 
       {/* Input Area */}

@@ -28,6 +28,17 @@ const App: React.FC = () => {
   const callRef = useRef<MediaConnection | null>(null);
   const connRef = useRef<DataConnection | null>(null);
 
+  const getOptionalMediaStream = async (): Promise<MediaStream> => {
+    try {
+      return await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+    } catch (err: any) {
+      if (err && err.name === 'NotFoundError') {
+        return await navigator.mediaDevices.getUserMedia({ audio: true });
+      }
+      throw err;
+    }
+  };
+
   // Parse URL param for auto-connecting
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -55,7 +66,7 @@ const App: React.FC = () => {
              // Request permissions if not already granted
              let stream = localStream;
              if (!stream) {
-                 stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+                 stream = await getOptionalMediaStream();
                  setLocalStream(stream);
              }
              call.answer(stream);
@@ -137,7 +148,7 @@ const App: React.FC = () => {
     setPeerState(prev => ({ ...prev, callStatus: CallStatus.CONNECTING }));
 
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+      const stream = await getOptionalMediaStream();
       setLocalStream(stream);
 
       const call = peerRef.current.call(targetId, stream);
@@ -230,8 +241,8 @@ const App: React.FC = () => {
   };
 
   const copyInviteLink = () => {
-      const url = `${window.location.protocol}//${window.location.host}${window.location.pathname}?peer=${peerState.myId}`;
-      navigator.clipboard.writeText(url);
+      if (!peerState.myId) return;
+      navigator.clipboard.writeText(peerState.myId);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
   };
@@ -277,21 +288,21 @@ const App: React.FC = () => {
 
                     <div className="bg-slate-900/50 backdrop-blur-xl border border-slate-700 p-8 rounded-3xl shadow-2xl w-full max-w-md z-10">
                         <div className="mb-6">
-                            <label className="text-xs text-slate-400 uppercase font-semibold tracking-wider ml-1 mb-2 block">Share Invite Link</label>
+                            <label className="text-xs text-slate-400 uppercase font-semibold tracking-wider ml-1 mb-2 block">Your Peer ID</label>
                             <div className="flex gap-2">
                                 <div className="flex-1 bg-slate-800 rounded-xl px-4 py-3 text-slate-300 font-mono text-sm flex items-center overflow-hidden">
                                     {peerState.myId ? 
-                                      `${window.location.host}/?peer=${peerState.myId.substring(0,6)}...` : 
+                                      peerState.myId : 
                                       "Generating ID..."
                                     }
                                 </div>
                                 <button 
                                     onClick={copyInviteLink}
                                     className="bg-slate-800 hover:bg-slate-700 border border-slate-700 text-white p-3 rounded-xl transition-colors flex items-center gap-2"
-                                    title="Copy Invite Link"
+                                    title="Copy Peer ID"
                                 >
                                     {copied ? <Check size={20} className="text-green-400"/> : <LinkIcon size={20} />}
-                                    <span className="text-xs font-medium hidden sm:inline">{copied ? 'Copied' : 'Copy Link'}</span>
+                                    <span className="text-xs font-medium hidden sm:inline">{copied ? 'Copied' : 'Copy ID'}</span>
                                 </button>
                             </div>
                         </div>
@@ -339,10 +350,14 @@ const App: React.FC = () => {
                     {/* Remote Stream (Main) */}
                     <div className="flex-1 relative rounded-3xl overflow-hidden bg-slate-900 shadow-2xl ring-1 ring-slate-700/50">
                         <VideoFeed stream={remoteStream} label="Remote" />
-                        
                         {/* Local Stream (PIP) */}
                         <div className="absolute top-4 right-4 w-32 md:w-48 aspect-video rounded-xl overflow-hidden shadow-2xl border-2 border-slate-800/50 z-20 transition-all hover:scale-105">
-                             <VideoFeed stream={localStream} label="You" isLocal isMuted />
+                             <VideoFeed
+                               stream={localStream}
+                               label="You"
+                               isLocal
+                               isMuted={peerState.isAudioMuted}
+                             />
                         </div>
                     </div>
                 </div>
